@@ -1,0 +1,6 @@
+{
+    "editor.formatOnSave": true, // Format code on save
+    "python.testing.unittestEnabled": true, // Enable unittest
+    "python.testing.pytestEnabled": true, // Enable pytest
+    "python.testing.autoTestDiscoverOnSaveEnabled": true // Auto-discover tests on save
+}
