@@ -8,8 +8,10 @@ The simulation is based on several key assumptions:
 - Seals roam the sea continuously, hunting penguins.
 - ....
 
-<img src="etc/animation.gif" alt="Animal Tracking Demo" width="30%">
-<img src="etc/animation1.gif" alt="Animal Tracking Demo" width="30%">
+<div style="display: flex; justify-content: space-around;">
+  <img src="etc/animation.gif" alt="Animal Tracking Demo" width="45%">
+  <img src="etc/animation1.gif" alt="Animal Tracking Demo" width="45%">
+</div>
 
 To set up the working environment, use the provided env.yml file with Conda:
 
