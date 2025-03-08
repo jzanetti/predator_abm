@@ -20,9 +20,9 @@ conda env create -f env.yml
 ```
 You can adjust the model parameters in `process/__init__.py` to tune the simulation behavior (e.g., population sizes, interaction rates). The visualization uses color coding and marker symbols to represent animal types and their statuses. For example:
 
-- `Fish`: <span style="color: green">red text</span>
-- `Penguin`: <span style="color: blue">red text</span>
-- `Seal`: <span style="color: red">red text</span>
+- `Fish`: Green
+- `Penguin`: Blue
+- `Seal`: Red
 
 These colors help distinguish between different animal types when viewing the data. In addition, the status of each animal is represented by a unique marker symbol:
 
