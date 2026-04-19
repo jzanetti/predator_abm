@@ -61,9 +61,6 @@ class Fish(Agent):
         water_positions = [
             pos for pos in possible_positions if self.model.terrain[pos[0]][pos[1]] == "water"]
 
-        if len(water_positions) < 5:
-            x = 3
-
         if water_positions:
             new_position = escape_strategy(enemies, water_positions)
             self.model.grid.move_agent(self, new_position)

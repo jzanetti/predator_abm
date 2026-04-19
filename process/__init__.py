@@ -34,7 +34,7 @@ PARAMS = {
         "speed": {"walk": 1.0, "run": 5.0},
         "vision": {"hunt": 50.0, "escape": 10.0},
         "hunt_success_rate": 0.5,
-        "max_travel_distance": 150.0
+        "max_travel_distance": 350.0
     },
     "seal": {
         "energy": 30,

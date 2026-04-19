@@ -5,6 +5,7 @@ from random import choice as random_choice
 from pandas import DataFrame
 from process import TOTAL_TIMESTEPS
 from random import random as random_random
+from numpy import linspace as np_linspace   
 
 def run_model(model) -> DataFrame:
     """Runs a simulation model for 100 steps and collects agent data into a DataFrame.
@@ -146,6 +147,11 @@ def escape_strategy(all_enemies, possible_pos: list, probabilies: list = [0.3, 0
         >>> escape_strategy(enemies, positions)
         (6, 6)  # Example output, actual result may vary due to randomness
     """
+
+    probabilies = np_linspace(0.3, 0.1, len(all_enemies))
+    probabilies = probabilies / sum(probabilies)
+    probabilies = probabilies.tolist()
+
     all_dis = []
     for proc_position in possible_pos:
         total_dis = 0
