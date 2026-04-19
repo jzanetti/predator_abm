@@ -7,10 +7,12 @@ from process.fish import Fish
 from process.penguin import Penguin
 from process.seal import Seal
 from vis import simple_vis
-from random import randint, gauss
+from random import gauss, random
 from pandas import DataFrame
-from process import MAP_SIZE, POPULATION, INITIAL_LOCATIONS, LAND_LOCATIONS
+from process import CLIMATE_VARS, MAP_SIZE, POPULATION, INITIAL_LOCATIONS, LAND_LOCATIONS
 from process.utils import run_model
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning)
 
 class SealPenguinFishModel(Model):
     def __init__(
@@ -21,6 +23,9 @@ class SealPenguinFishModel(Model):
             width=MAP_SIZE, 
             height=MAP_SIZE, 
             init_loc = INITIAL_LOCATIONS):
+        
+        self.current_step = 0
+
         self.num_penguins = N_penguins
         self.num_seals = N_seals
         self.num_fish = N_fish
@@ -29,9 +34,12 @@ class SealPenguinFishModel(Model):
 
         # Separate terrain grid (water everywhere, land in the middle)
         self.terrain = np.full((width, height), "water", dtype=object)
-        for x in range(LAND_LOCATIONS[0][0], LAND_LOCATIONS[0][1]):
-            for y in range(LAND_LOCATIONS[1][0], LAND_LOCATIONS[1][1]):
-                self.terrain[x][y] = "land"
+        self.land_cells = set()
+        for proc_land in LAND_LOCATIONS:
+            for x in range(proc_land[0][0], proc_land[0][1]):
+                for y in range(proc_land[1][0], proc_land[1][1]):
+                    self.terrain[x][y] = "land"
+                    self.land_cells.add((x, y))
 
         # Create fish (in water only)
         for i in range(self.num_fish):
@@ -68,7 +76,31 @@ class SealPenguinFishModel(Model):
             }
         )
 
+    def update_ice_dynamics(self):
+        self.current_step += 1
+        
+        edges_to_melt = []
+        for x, y in self.land_cells:
+            # Check 4 adjacent directions for water (Von Neumann neighborhood)
+            is_edge = False
+            for dx, dy in [(0,1), (1,0), (0,-1), (-1,0)]:
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < self.grid.width and 0 <= ny < self.grid.height:
+                    if self.terrain[nx][ny] == "water":
+                        is_edge = True
+                        break
+            if is_edge:
+                edges_to_melt.append((x, y))
+
+        # Apply the stability index probability to the edges
+        for mx, my in edges_to_melt:
+            if random() < CLIMATE_VARS["ice_stability_index"]:
+                self.terrain[mx][my] = "water"
+                self.land_cells.remove((mx, my))
+
     def step(self):
+
+        self.update_ice_dynamics()
         self.datacollector.collect(self)
         self.schedule.step()
         if sum(1 for a in self.schedule.agents if isinstance(a, Penguin)) == 0:
@@ -76,6 +108,6 @@ class SealPenguinFishModel(Model):
 
 if __name__ == "__main__":
     model = SealPenguinFishModel()
-    output = run_model(model) 
-    simple_vis(output)
+    output, terrain_history = run_model(model) 
+    simple_vis(output, terrain_history)
     print("done")

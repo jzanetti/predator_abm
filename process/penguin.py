@@ -1,6 +1,6 @@
 from mesa import Agent
 from math import sqrt
-from process.utils import get_nearest_position, get_random_move_position, chase_or_home, escape_strategy
+from process.utils import get_nearest_position, get_random_move_position, chase_or_home, escape_strategy, success_rate
 from process import INITIAL_LOCATIONS, MAP_SIZE, PARAMS
 from random import gauss
 
@@ -12,6 +12,7 @@ class Penguin(Agent):
         self.status = "hunt"
         self.energy = int(gauss(mu=PARAMS["penguin"]["energy"], sigma=PARAMS["penguin"]["energy"]/2))
         self.full_speed = True
+        self.water_travel_distance = 0.0
 
         proc_check = 0
         while True:
@@ -27,30 +28,50 @@ class Penguin(Agent):
                 self.home = None
                 break
 
-    def step(self):
+    def step(self, return_nearest_land = True):
         if self.status == "dead":
             return
+        
+        old_pos = self.pos
 
         neighbors = self.model.grid.get_neighbors(
             self.pos, 
             moore=True, 
-            radius=int(PARAMS["penguin"]["alert"]["escape"]))
+            radius=int(PARAMS["penguin"]["vision"]["escape"]))
         seals_nearby = [agent for agent in neighbors if agent.type == "seal"]
         
         if seals_nearby:
             self.escape(seals_nearby)
         else:
             if self.status == "full":
+
+                if not self.model.land_cells:
+                    self.status = "dead" # No ice left in the entire simulation
+                    return
+
+                if return_nearest_land:
+                    min_dist = float('inf')
+                    land_target = None
+
+                    for lx, ly in self.model.land_cells:
+                        dist = ((self.pos[0] - lx)**2 + (self.pos[1] - ly)**2)**0.5
+                        if dist < min_dist:
+                            min_dist = dist
+                            land_target = (lx, ly)
+                else:
+                    land_target = (self.home["x"], self.home["y"])
+
+
                 new_position = chase_or_home(
                     self.model, 
                     self.pos, 
-                    (self.home["x"], self.home["y"]), 
+                    land_target, 
                     PARAMS["penguin"]["speed"]["walk"]) 
                 self.model.grid.move_agent(self, new_position)
                 self.energy = min(self.energy, self.energy + 1)
             else:
                 neighbors = self.model.grid.get_neighbors(
-                    self.pos, moore=True, radius=int(PARAMS["penguin"]["alert"]["hunt"]))
+                    self.pos, moore=True, radius=int(PARAMS["penguin"]["vision"]["hunt"]))
                 fish_nearby_pos = [agent.pos for agent in neighbors if (agent.type == "fish" and agent.status == "alive")]
                 
                 if len(fish_nearby_pos) > 0:
@@ -74,6 +95,25 @@ class Penguin(Agent):
                 else:
                     self.random_move()
 
+        # ODOMETER LOGIC (Runs at the very end of the step)
+        if self.pos != old_pos:
+            # Calculate physical distance moved this step
+            dist_moved = ((self.pos[0] - old_pos[0])**2 + (self.pos[1] - old_pos[1])**2)**0.5
+            
+            current_terrain = self.model.terrain[self.pos[0]][self.pos[1]]
+            
+            if current_terrain == "water":
+                self.water_travel_distance += dist_moved # Tick up the odometer
+            elif current_terrain == "land":
+                self.water_travel_distance = 0.0  # Reset odometer upon reaching safety
+                
+            # Exhaustion check
+            if self.water_travel_distance > PARAMS["penguin"]["max_travel_distance"]:
+                self.status = "dead"
+
+
+
+
     def random_move(self, new_position = None):
         proc_pos = self.pos
         if new_position is not None:
@@ -88,6 +128,7 @@ class Penguin(Agent):
             moore=True, 
             include_center=False,
             radius=int(PARAMS["penguin"]["speed"]["run"]))
+
         land_steps = [pos for pos in possible_steps if self.model.terrain[pos[0]][pos[1]] == "land"]
         if land_steps:
             new_position = self.random.choice(land_steps)
@@ -96,15 +137,11 @@ class Penguin(Agent):
             new_position = escape_strategy(enemies, possible_steps)
             self.model.grid.move_agent(self, new_position)
 
-
-
-
-
     def hunt(self, new_position):
         self.model.grid.move_agent(self, new_position)
         cellmates = self.model.grid.get_cell_list_contents([new_position])
         for agent in cellmates:
-            if agent.type == "fish":
+            if agent.type == "fish" and success_rate(PARAMS["penguin"]["hunt_success_rate"]):
                 agent.status = "dead"
                 self.status = "full"
                 break

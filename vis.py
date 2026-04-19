@@ -5,8 +5,9 @@ from os.path import exists, join
 from os import makedirs, listdir
 from process import LAND_LOCATIONS
 from PIL import Image
+from pandas import merge as pandas_merge
 
-def simple_vis(output: DataFrame, output_dir = "img"):
+def simple_vis(output: DataFrame, terrain_history: dict, output_dir = "img", enable_traceline = True):
 
     if not exists(output_dir):
         makedirs(output_dir)
@@ -18,48 +19,82 @@ def simple_vis(output: DataFrame, output_dir = "img"):
     markers = {"alive": "o", 'hunt': 'o', 'dead': 'x', "full": "*"}  # Add more statuses if needed
 
     for timestep in range(int(output["time"].min()), output["time"].max()):
-        proc_output = output[output["time"] == timestep]
+        if enable_traceline:
+            proc_outputs = output[output["time"] <= timestep]
+        else:
+            proc_outputs = output[output["time"] == timestep]
 
         # Create the plot
         plt.figure(figsize=(10, 10))
         # Add brown region for 15 < x < 100 and 30 < y < 50
-        plt.gca().add_patch(plt.Rectangle(
-            (LAND_LOCATIONS[0][0], LAND_LOCATIONS[1][0]), 
-            LAND_LOCATIONS[0][1] - LAND_LOCATIONS[0][0],
-            LAND_LOCATIONS[1][1] - LAND_LOCATIONS[1][0],
-            label='land',
-            facecolor='brown', 
-            zorder=1))
+
+
+        # NEW: Plot the dynamic land mask
+        if terrain_history and timestep in terrain_history:
+            land_cells = terrain_history[timestep]
+            if land_cells:
+                lx, ly = zip(*land_cells)
+                # Use square markers ('s') to simulate grid blocks.
+                plt.scatter(lx, ly, c='brown', marker='s', s=15, label='land', zorder=1)
+        else:
+            # Fallback to the old static method if no history is provided
+            for proc_land in LAND_LOCATIONS:
+                plt.gca().add_patch(plt.Rectangle(
+                    (proc_land[0][0], proc_land[1][0]), 
+                    proc_land[0][1] - proc_land[0][0],
+                    proc_land[1][1] - proc_land[1][0],
+                    label='land',
+                    facecolor='brown', 
+                    zorder=1))
+        """
+        for proc_land in LAND_LOCATIONS:
+            plt.gca().add_patch(plt.Rectangle(
+                (proc_land[0][0], proc_land[1][0]), 
+                proc_land[0][1] - proc_land[0][0],
+                proc_land[1][1] - proc_land[1][0],
+                label='land',
+                facecolor='brown', 
+                zorder=1))
+        """
         # Iterate through unique combinations of type and status
-        for animal_type in proc_output["type"].unique():
-            for status in proc_output["status"].unique():
-                # Filter the DataFrame for this combination
-                subset = proc_output[
-                    (proc_output["type"] == animal_type) & (proc_output["status"] == status)]
-                
+        for animal_type in proc_outputs["type"].unique():
+            for status in proc_outputs["status"].unique():
+
+                proc_subsets = proc_outputs[proc_outputs["type"] == animal_type]
+
+                proc_subset = proc_subsets[(proc_subsets["time"] == timestep) & (proc_outputs["status"] == status)]
+
                 # Skip if no data for this combination
-                if len(subset) == 0:
+                if len(proc_subset) == 0:
                     continue
                     
-                # Plot this subset
-                plt.scatter(subset['x'], 
-                        subset['y'], 
+                # Plot the current location
+                plt.scatter(proc_subset['x'], 
+                        proc_subset['y'], 
                         c=colors.get(animal_type, 'gray'),  # Default to gray if type not in colors
                         marker=markers.get(status, '.'),    # Default to dot if status not in markers
                         label=f'{animal_type} ({status})',
                         s=100)  # Size of the markers
+                
+                if enable_traceline:
+                    if animal_type != "fish":
+                        # Plot track lines
+                        for id_value, group in proc_subsets.groupby("id"):
+                            plt.plot(group["x"], group["y"],  linewidth=0.15, c=colors.get(animal_type, "gray"), alpha=0.15)
+
+
         # LAND_LOCATIONS = [(50, 80), (50, 100)]
 
         # Set the map boundaries [0, 20] for both x and y
-        plt.xlim(0, 200)
-        plt.ylim(0, 200)
+        plt.xlim(25, 200)
+        plt.ylim(25, 200)
 
         # Add grid, labels, and legend
         plt.grid(True)
         plt.xlabel('X Coordinate')
         plt.ylabel('Y Coordinate')
         plt.title(f'Timestep {timestep}')
-        plt.legend()
+        plt.legend(loc="upper right")
         plt.savefig(join(output_dir, f"timestep_{timestep}.png"), bbox_inches="tight")
         plt.close()
     

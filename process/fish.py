@@ -30,13 +30,18 @@ class Fish(Agent):
         neighbors = self.model.grid.get_neighbors(
             self.pos, 
             moore=True, 
-            radius=int(PARAMS["fish"]["alert"]["escape"]))
-        penguin_nearby = [agent for agent in neighbors if agent.type == "penguin"]
+            radius=int(PARAMS["fish"]["vision"]["escape"]))
+        penguin_nearby = [agent for agent in neighbors if (agent.type == "penguin" and agent.status != "dead")]
 
         if penguin_nearby:
             self.escape(penguin_nearby)
         else:
-            new_position = chase_or_home(self.model, self.pos, (self.home["x"], self.home["y"]), PARAMS["fish"]["speed"]["walk"], terrain_type="water") 
+            new_position = chase_or_home(
+                self.model, 
+                self.pos, 
+                (self.home["x"], self.home["y"]), 
+                PARAMS["fish"]["speed"]["walk"], 
+                terrain_type="water") 
             self.random_move(new_position=new_position)
 
     def random_move(self, new_position = None):
@@ -53,7 +58,11 @@ class Fish(Agent):
             moore=True, 
             include_center=False, 
             radius=int(PARAMS["fish"]["speed"]["run"]))
-        water_positions = [pos for pos in possible_positions if self.model.terrain[pos[0]][pos[1]] == "water"]
+        water_positions = [
+            pos for pos in possible_positions if self.model.terrain[pos[0]][pos[1]] == "water"]
+
+        if len(water_positions) < 5:
+            x = 3
 
         if water_positions:
             new_position = escape_strategy(enemies, water_positions)

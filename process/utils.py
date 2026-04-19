@@ -4,6 +4,7 @@ from random import choices as random_choices
 from random import choice as random_choice
 from pandas import DataFrame
 from process import TOTAL_TIMESTEPS
+from random import random as random_random
 
 def run_model(model) -> DataFrame:
     """Runs a simulation model for 100 steps and collects agent data into a DataFrame.
@@ -38,13 +39,19 @@ def run_model(model) -> DataFrame:
         >>> print(df.columns)
         Index(['time', 'type', 'status', 'x', 'y'], dtype='object')
     """
-    output = {"time": [], "type": [], "status": [], "x": [], "y": []}
+    output = {"id": [], "time": [], "type": [], "status": [], "x": [], "y": []}
+
+    terrain_history = {}
+
     for i in range(TOTAL_TIMESTEPS):
         print(f"step {i}")
         model.step()
 
+        terrain_history[i] = list(model.land_cells)
+
         for agent in model.schedule.agents:
             x, y = agent.pos
+            output["id"].append(agent.id)
             output["time"].append(i)
             output["type"].append(agent.type)
             output["status"].append(agent.status )
@@ -54,12 +61,13 @@ def run_model(model) -> DataFrame:
 
     output = DataFrame.from_dict(output)
 
-    return output
+    return output, terrain_history
 
 
 def get_nearest_position(
         possible_pos: list, 
         target_pos: tuple,
+        possible_ids: list or None = None,
         probabilies: list = [0.3, 0.3, 0.2, 0.1, 0.1]) -> tuple:
     """Selects a position from possible positions based on distance to target and probabilities.
 
@@ -101,7 +109,11 @@ def get_nearest_position(
     selected_items = [possible_pos[i] for i in indices]
 
     new_position = random_choices(selected_items, weights=probabilies, k=1)[0]
-    return new_position
+    
+    if possible_ids is None:
+        return new_position
+
+    return new_position, possible_ids[possible_pos.index(new_position)]
 
 
 def escape_strategy(all_enemies, possible_pos: list, probabilies: list = [0.3, 0.3, 0.2, 0.1, 0.1]) -> tuple:
@@ -148,6 +160,7 @@ def escape_strategy(all_enemies, possible_pos: list, probabilies: list = [0.3, 0
     selected_items = [possible_pos[i] for i in indices]
 
     new_position = random_choices(selected_items, weights=probabilies, k=1)[0]
+
     return new_position
 
 
@@ -209,6 +222,25 @@ def chase_or_home(model, start_pos, target_pos, speed, terrain_type: str or None
     
     return start_pos
 
+
+
+def success_rate(rate: float = 0.6) -> bool:
+    """Determine success based on a given probability rate.
+
+    Args:
+        rate (float): The probability of success, between 0.0 and 1.0 (default: 0.6).
+
+    Returns:
+        bool: True if the random chance is less than the rate, False otherwise.
+
+    Examples:
+        >>> success_rate(0.6)  # Returns True ~60% of the time
+        True
+        >>> success_rate(0.3)  # Returns True ~30% of the time
+        False
+    """
+    chance = random_random()
+    return chance < rate
 
 """
 self.model.grid.move_agent(self, new_position)
