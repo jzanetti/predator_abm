@@ -10,9 +10,12 @@ class Penguin(Agent):
         self.type = "penguin"
         self.id = unique_id
         self.status = "hunt"
-        self.energy = int(gauss(mu=PARAMS["penguin"]["energy"], sigma=PARAMS["penguin"]["energy"]/2))
-        self.full_speed = True
-        self.water_travel_distance = 0.0
+        max_energy = PARAMS["penguin"]["energy"]["max"]
+        self.energy = int(gauss(mu=max_energy, sigma=max_energy/4))
+        # self.full_speed = True
+        # self.water_travel_distance = 0.0
+        self.speed_mode = "walk" # Tracker for differential burn rates
+
 
         proc_check = 0
         while True:
@@ -33,6 +36,7 @@ class Penguin(Agent):
             return
         
         old_pos = self.pos
+        self.speed_mode = "walk" # Reset to baseline at the start of each step
 
         neighbors = self.model.grid.get_neighbors(
             self.pos, 
@@ -61,14 +65,28 @@ class Penguin(Agent):
                 else:
                     land_target = (self.home["x"], self.home["y"])
 
+                # Climate Change Impact: automatically snap to nearest land if current cell melts
+                if self.model.terrain[self.pos[0]][self.pos[1]] == "water":
+                    if land_target:
+                        self.model.grid.move_agent(self, land_target)
+                else:
+                    new_position = chase_or_home(
+                        self.model, 
+                        self.pos, 
+                        land_target, 
+                        PARAMS["penguin"]["speed"]["walk"]) 
+                    self.model.grid.move_agent(self, new_position)
+                
+                # 2. UPDATED HUNT RETURN: Use nested "max" key
+                if self.energy <= (PARAMS["penguin"]["energy"]["max"] * 0.5) and self.model.terrain[self.pos[0]][self.pos[1]] == "land":
+                    self.status = "hunt"
 
-                new_position = chase_or_home(
-                    self.model, 
-                    self.pos, 
-                    land_target, 
-                    PARAMS["penguin"]["speed"]["walk"]) 
-                self.model.grid.move_agent(self, new_position)
-                self.energy = min(self.energy, self.energy + 1)
+
+                # self.energy = min(PARAMS["penguin"]["energy"], self.energy + 1)
+
+                # 3. Return to Sea/Hunt once fully rested on land
+                # if self.energy >= PARAMS["penguin"]["energy"] and self.model.terrain[self.pos[0]][self.pos[1]] == "land":
+                #    self.status = "hunt"
             else:
                 neighbors = self.model.grid.get_neighbors(
                     self.pos, moore=True, radius=int(PARAMS["penguin"]["vision"]["hunt"]))
@@ -98,28 +116,30 @@ class Penguin(Agent):
         # ODOMETER LOGIC (Runs at the very end of the step)
         if self.pos != old_pos:
             # Calculate physical distance moved this step
-            dist_moved = ((self.pos[0] - old_pos[0])**2 + (self.pos[1] - old_pos[1])**2)**0.5
+            # dist_moved = ((self.pos[0] - old_pos[0])**2 + (self.pos[1] - old_pos[1])**2)**0.5
             
             current_terrain = self.model.terrain[self.pos[0]][self.pos[1]]
             
             if current_terrain == "water":
-                self.water_travel_distance += dist_moved # Tick up the odometer
+                # self.water_travel_distance += dist_moved # Tick up the odometer
+                self.energy -= PARAMS["penguin"]["energy"]["burn_rate"]["water"][self.speed_mode]  # Penguins get more exhausted in water
             elif current_terrain == "land":
-                self.water_travel_distance = 0.0  # Reset odometer upon reaching safety
+                # self.water_travel_distance = 0.0  # Reset odometer upon reaching safety
+                # self.energy = min(PARAMS["penguin"]["energy"], self.energy + 1)
+                self.energy -= PARAMS["penguin"]["energy"]["burn_rate"]["land"]
                 
             # Exhaustion check
-            if self.water_travel_distance > PARAMS["penguin"]["max_travel_distance"]:
-                self.status = "dead"
-
-
-
+            # if self.water_travel_distance > PARAMS["penguin"]["max_travel_distance"]:
+            #    self.status = "dead"
+            if self.energy <= 0:
+                self.status = "dead" # Died of starvation/hypothermia
 
     def random_move(self, new_position = None):
         proc_pos = self.pos
         if new_position is not None:
             proc_pos = new_position
         new_position = get_random_move_position(
-            self.model, proc_pos, PARAMS["fish"]["speed"]["walk"])
+            self.model, proc_pos, PARAMS["penguin"]["speed"]["walk"])
         self.model.grid.move_agent(self, new_position)
 
     def escape(self, enemies):
@@ -144,20 +164,15 @@ class Penguin(Agent):
             if agent.type == "fish" and success_rate(PARAMS["penguin"]["hunt_success_rate"]):
                 agent.status = "dead"
                 self.status = "full"
+                self.energy = PARAMS["penguin"]["energy"]["max"]
                 break
 
     def energy_level(self):
-        if self.energy == PARAMS["penguin"]["energy"]:
-            self.full_speed = True
-        if self.energy == 0:
-            self.full_speed = False
-
-        if self.full_speed:
-            speed = PARAMS["penguin"]["speed"]["run"]
-            self.energy = max(0, self.energy - 1)
+        # 5. UPDATED SPEED TOGGLE: Use nested "max" key and flag the speed mode
+        if self.energy > (PARAMS["penguin"]["energy"]["max"] * 0.3):
+            self.speed_mode = "run"
+            return PARAMS["penguin"]["speed"]["run"]
         else:
-            speed = PARAMS["penguin"]["speed"]["walk"]
-            self.energy = self.energy + 1
-        
-        return speed
+            self.speed_mode = "walk"
+            return PARAMS["penguin"]["speed"]["walk"]
 

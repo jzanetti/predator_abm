@@ -6,7 +6,7 @@ import numpy as np
 from process.fish import Fish
 from process.penguin import Penguin
 from process.seal import Seal
-from vis import simple_vis
+from vis import simple_vis, plot_summary_charts
 from random import gauss, random
 from pandas import DataFrame
 from process import CLIMATE_VARS, MAP_SIZE, POPULATION, INITIAL_LOCATIONS, LAND_LOCATIONS
@@ -110,4 +110,5 @@ if __name__ == "__main__":
     model = SealPenguinFishModel()
     output, terrain_history = run_model(model) 
     simple_vis(output, terrain_history)
+    plot_summary_charts(output)
     print("done")

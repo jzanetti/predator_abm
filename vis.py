@@ -7,6 +7,55 @@ from process import LAND_LOCATIONS
 from PIL import Image
 from pandas import merge as pandas_merge
 
+
+def plot_summary_charts(output: DataFrame, output_dir="img"):
+    """Generates and displays a line chart of the animal statuses over time."""
+    import os
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+        
+    # Create a figure with two side-by-side plots
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+    
+    # --- Plot 1: Fish Status ---
+    fish_data = output[output["type"] == "fish"].groupby(["time", "status"]).size().unstack(fill_value=0)
+    if "alive" in fish_data: 
+        ax1.plot(fish_data.index, fish_data["alive"], label="Alive", color="green", linewidth=2)
+    if "dead" in fish_data: 
+        ax1.plot(fish_data.index, fish_data["dead"], label="Dead", color="black", linestyle="--")
+        
+    ax1.set_title("Fish Population Dynamics")
+    ax1.set_xlabel("Time Step")
+    ax1.set_ylabel("Count")
+    ax1.legend()
+    ax1.grid(True)
+    
+    # --- Plot 2: Penguin Status & Location ---
+    penguin_data = output[output["type"] == "penguin"].copy()
+    
+    # Combine status and terrain for the labels (e.g., "hunt (water)", "full (land)")
+    if "terrain" in penguin_data.columns:
+        penguin_data["state"] = penguin_data["status"] + " (" + penguin_data["terrain"] + ")"
+    else:
+        penguin_data["state"] = penguin_data["status"]
+        
+    penguin_summary = penguin_data.groupby(["time", "state"]).size().unstack(fill_value=0)
+    
+    for column in penguin_summary.columns:
+        ax2.plot(penguin_summary.index, penguin_summary[column], label=column, linewidth=2)
+        
+    ax2.set_title("Penguin Status & Location")
+    ax2.set_xlabel("Time Step")
+    ax2.set_ylabel("Count")
+    ax2.legend()
+    ax2.grid(True)
+    
+    plt.tight_layout()
+    # Save a copy to your img folder, then physically pop the window open
+    plt.savefig(os.path.join(output_dir, "summary_charts.png"), bbox_inches="tight")
+    plt.close()
+
+
 def simple_vis(output: DataFrame, terrain_history: dict, output_dir = "img", enable_traceline = True):
 
     if not exists(output_dir):

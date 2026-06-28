@@ -40,7 +40,7 @@ def run_model(model) -> DataFrame:
         >>> print(df.columns)
         Index(['time', 'type', 'status', 'x', 'y'], dtype='object')
     """
-    output = {"id": [], "time": [], "type": [], "status": [], "x": [], "y": []}
+    output = {"id": [], "time": [], "type": [], "status": [], "x": [], "y": [], "terrain": []}
 
     terrain_history = {}
 
@@ -58,6 +58,7 @@ def run_model(model) -> DataFrame:
             output["status"].append(agent.status )
             output["x"].append(x)
             output["y"].append(y)
+            output["terrain"].append(model.terrain[x][y])
 
 
     output = DataFrame.from_dict(output)

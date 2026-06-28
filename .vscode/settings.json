@@ -1,6 +1,8 @@
 {
-    "editor.formatOnSave": true, // Format code on save
-    "python.testing.unittestEnabled": true, // Enable unittest
-    "python.testing.pytestEnabled": true, // Enable pytest
-    "python.testing.autoTestDiscoverOnSaveEnabled": true // Auto-discover tests on save
+  "editor.formatOnSave": true, // Format code on save
+  "python.testing.unittestEnabled": true, // Enable unittest
+  "python.testing.pytestEnabled": true, // Enable pytest
+  "python.testing.autoTestDiscoverOnSaveEnabled": true,
+  "python-envs.defaultEnvManager": "ms-python.python:conda",
+  "python-envs.defaultPackageManager": "ms-python.python:conda" // Auto-discover tests on save
 }

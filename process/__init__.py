@@ -6,15 +6,20 @@ LAND_LOCATIONS = [
 ]
 
 CLIMATE_VARS = {
-    "ice_stability_index": 0.03,  # A value between 0 and 1 that determines how quickly the ice melts. Higher means faster melt.
+    # Reduced drastically. At 1 timestep = 1 hour, a 3% melt rate would destroy 
+    # the land in days. 0.1% per hour allows for gradual melting over 3 months.
+    "ice_stability_index": 0.001,  
 }
 
+# 3 months ≈ 90 days. 
+# 90 days * 24 hours/day = 2160 hours. 
+# 2160 hours / 3 hours per step = 720 timesteps.
 TOTAL_TIMESTEPS = 300
 
 POPULATION = {
-    "penguin": 15,
-    "seal": 0,
-    "fish": 200
+    "penguin": 50,
+    "seal": 0,      
+    "fish": 800     
 }
 
 INITIAL_LOCATIONS = {
@@ -24,23 +29,27 @@ INITIAL_LOCATIONS = {
 
 PARAMS = {
     "fish": {
-        "energy": None,
-        "speed": {"walk": 2.0, "run": 2.0},
-        "vision": {"escape": 15.0, "home": 10.0},
-        "hunt_success_rate": None,
+            "energy": None,
+            "speed": {"walk": 2.0, "run": 4.0},     # 2 km/h cruise, 4 km/h burst
+            "vision": {"escape": 2.0, "home": 2.0}, # 6 km vision (2 grids * 3km)
+            "hunt_success_rate": None,
     },
     "penguin": {
-        "energy": 30,
-        "speed": {"walk": 1.0, "run": 5.0},
-        "vision": {"hunt": 50.0, "escape": 10.0},
-        "hunt_success_rate": 0.5,
-        "max_travel_distance": 350.0
-    },
+            # A 5-day foraging trip = 120 hours.
+            # 120 hours / 3 hours per step = 40 energy steps.
+            "energy": {"max": 40, "burn_rate": {"water": {"walk": 1.0, "run": 3.0}, "land": 0.2}},  
+            "speed": {"walk": 7.0, "run": 15.0},    # 7 km/h cruise, 15 km/h sprint
+            "vision": {"hunt": 4.0, "escape": 2.0}, # 12 km hunt vision, 6 km escape vision
+            "hunt_success_rate": 0.4,
+            # Max real-world travel distance ~1000 km.
+            # 1000 km / 3 km per grid = 333 grid units.
+            # "max_travel_distance": 333.0 
+        },
     "seal": {
-        "energy": 30,
-        "speed": {"walk": 1.0, "run": 8.0},
-        "vision": {"hunt": 100.0},
-        "hunt_success_rate": 0.15
+            "energy": 40,                           # 120 hours equivalent
+            "speed": {"walk": 10.0, "run": 30.0},   # 10 km/h cruise, 30 km/h sprint
+            "vision": {"hunt": 5.0},                # 15 km vision (5 grids * 3km)
+            "hunt_success_rate": 0.20               
     }
 }
 
