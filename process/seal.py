@@ -14,6 +14,11 @@ class Seal(Agent):
         self.target_id = None
         self.target_pos = None
 
+        # FIX: Added energy tracking for seals
+        max_energy = PARAMS["seal"]["energy"]["max"]
+        self.energy = int(gauss(mu=max_energy, sigma=max_energy/4))
+        self.speed_mode = "walk"
+
         proc_check = 0
         while True:
             proc_check += 1
@@ -30,6 +35,12 @@ class Seal(Agent):
 
     def step(self):
 
+        if self.status == "dead":
+            return
+        
+        old_pos = self.pos
+        self.speed_mode = "walk" # Reset to baseline at the start of each step
+
         if self.status == "full":
             new_position = chase_or_home(
                 self.model, 
@@ -37,7 +48,10 @@ class Seal(Agent):
                 (self.home["x"], self.home["y"]), 
                 PARAMS["seal"]["speed"]["walk"]) 
             self.model.grid.move_agent(self, new_position)
-            # self.random_move()
+
+            # FIX: Seal gets hungry again
+            if self.energy <= (PARAMS["seal"]["energy"]["max"] * 0.5):
+                self.status = "hunt"
         else:
             neighbors = self.model.grid.get_neighbors(self.pos, moore=True, radius=int(PARAMS["seal"]["vision"]["hunt"]))
             penguin_nearby = [(agent.id, agent.pos) for agent in neighbors if (agent.type == "penguin" and agent.status != "dead")]
@@ -55,6 +69,8 @@ class Seal(Agent):
 
             if len(penguin_nearby) > 0:
                 
+                self.speed_mode = "run"
+
                 if self.target_id in penguin_nearby_id:
                     # observe other 3 penguins while hunting the target penguin (note this selection may include target penguin itself)
                     target_pengun_pos = penguin_nearby_pos[penguin_nearby_id.index(self.target_id)]
@@ -86,6 +102,13 @@ class Seal(Agent):
             else:
                 self.random_move()
 
+        # Odometer / energy drain logic
+        if self.pos != old_pos:
+            self.energy -= PARAMS[
+                "seal"]["energy"]["burn_rate"]["water"][self.speed_mode]
+            if self.energy <= 0:
+                self.status = "dead"
+    
     def random_move(self, new_position = None):
         proc_pos = self.pos
         if new_position is not None:
