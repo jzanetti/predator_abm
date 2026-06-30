@@ -135,8 +135,8 @@ def simple_vis(output: DataFrame, terrain_history: dict, output_dir = "img", ena
         # LAND_LOCATIONS = [(50, 80), (50, 100)]
 
         # Set the map boundaries [0, 20] for both x and y
-        plt.xlim(25, 200)
-        plt.ylim(25, 200)
+        plt.xlim(0, 200)
+        plt.ylim(0, 200)
 
         # Add grid, labels, and legend
         plt.grid(True)
@@ -164,13 +164,12 @@ def png_to_gif(input_folder="img", output_gif="animation.gif", duration=500):
     if not exists(input_folder):
         print(f"Error: Folder '{input_folder}' does not exist.")
         return
-    
-    # Get all PNG files in the folder
-    png_files = [f for f in listdir(input_folder) if f.lower().endswith('.png')]
-    
-    # Sort files to ensure they are in the correct order (e.g., timestep_0, timestep_1, etc.)
-    png_files.sort(key=lambda x: int(x.split('_')[-1].split('.')[0]) if 'timestep_' in x else x)
-    
+
+    # Get ONLY the timestep PNG files in the folder
+    png_files = [f for f in listdir(input_folder) if f.lower().endswith('.png') and 'timestep_' in f]
+    # Sort files to ensure they are in the correct order
+    png_files.sort(key=lambda x: int(x.split('_')[-1].split('.')[0]))
+
     # Check if there are any PNG files
     if not png_files:
         print(f"No PNG files found in '{input_folder}'.")

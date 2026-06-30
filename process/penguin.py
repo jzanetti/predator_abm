@@ -31,7 +31,7 @@ class Penguin(Agent):
                 self.home = None
                 break
 
-    def step(self, return_nearest_land = True):
+    def step(self, return_nearest_land = False):
         if self.status == "dead":
             return
         
@@ -65,11 +65,11 @@ class Penguin(Agent):
                 else:
                     land_target = (self.home["x"], self.home["y"])
 
-                # Climate Change Impact: automatically snap to nearest land if current cell melts
-                if self.model.terrain[self.pos[0]][self.pos[1]] == "water":
-                    if land_target:
-                        self.model.grid.move_agent(self, land_target)
-                else:
+                #if self.model.terrain[self.pos[0]][self.pos[1]] == "water":
+                #    if land_target:
+                #        self.model.grid.move_agent(self, land_target)
+                # else:
+                if land_target:
                     new_position = chase_or_home(
                         self.model, 
                         self.pos, 
@@ -80,13 +80,6 @@ class Penguin(Agent):
                 # 2. UPDATED HUNT RETURN: Use nested "max" key
                 if self.energy <= (PARAMS["penguin"]["energy"]["max"] * 0.5) and self.model.terrain[self.pos[0]][self.pos[1]] == "land":
                     self.status = "hunt"
-
-
-                # self.energy = min(PARAMS["penguin"]["energy"], self.energy + 1)
-
-                # 3. Return to Sea/Hunt once fully rested on land
-                # if self.energy >= PARAMS["penguin"]["energy"] and self.model.terrain[self.pos[0]][self.pos[1]] == "land":
-                #    self.status = "hunt"
             else:
                 neighbors = self.model.grid.get_neighbors(
                     self.pos, moore=True, radius=int(PARAMS["penguin"]["vision"]["hunt"]))

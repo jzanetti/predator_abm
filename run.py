@@ -10,7 +10,7 @@ from vis import simple_vis, plot_summary_charts
 from random import gauss, random
 from pandas import DataFrame
 from process import CLIMATE_VARS, MAP_SIZE, POPULATION, INITIAL_LOCATIONS, LAND_LOCATIONS
-from process.utils import run_model
+from process.utils import run_model, get_terrain_type
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -40,6 +40,9 @@ class SealPenguinFishModel(Model):
                 for y in range(proc_land[1][0], proc_land[1][1]):
                     self.terrain[x][y] = "land"
                     self.land_cells.add((x, y))
+        
+        self.terrain, self.land_cells = get_terrain_type(width, height)
+
 
         # Create fish (in water only)
         for i in range(self.num_fish):

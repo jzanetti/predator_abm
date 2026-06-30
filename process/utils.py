@@ -6,6 +6,40 @@ from pandas import DataFrame
 from process import TOTAL_TIMESTEPS
 from random import random as random_random
 from numpy import linspace as np_linspace   
+from numpy import full as np_full
+from numpy import flipud as np_flipud
+from rasterio import open as rasterio_open
+from rasterio.enums import Resampling
+
+def get_terrain_type(width, height) -> str:
+    # Separate terrain grid (water everywhere, land based on Basemap TIFF)
+    terrain = np_full((width, height), "water", dtype=object)
+    land_cells = set()
+    
+    # 1. Read the downloaded basemap using rasterio
+    # Note: Ensure "scott_base.tif" is in the same directory, or provide the correct path.
+    with rasterio_open("scott_base.tif") as src:
+        # Read the first band (Red/Grayscale) and automatically resample it to MAP_SIZE
+        img_data = src.read(
+            1, 
+            out_shape=(height, width),
+            resampling=Resampling.nearest
+        )
+        
+    # 2. Coordinate Alignment: Image origin (0,0) is at the top-left, 
+    # but Mesa grids use (0,0) at the bottom-left. We flip the image vertically to match.
+    img_data = np_flipud(img_data)
+    
+    # 3. Apply Threshold: Dark ocean pixels are roughly <50, bright ice is >200.
+    # A threshold of 100 perfectly divides land and water.
+    for x in range(width):
+        for y in range(height):
+            # Note numpy arrays are indexed [row, col] which corresponds to [y, x]
+            if img_data[y, x] > 100: 
+                terrain[x][y] = "land"
+                land_cells.add((x, y))
+
+    return terrain, land_cells
 
 def run_model(model) -> DataFrame:
     """Runs a simulation model for 100 steps and collects agent data into a DataFrame.
